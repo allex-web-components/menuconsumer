@@ -1,0 +1,23 @@
+{
+  "browserify": {
+    "dist/browserified.js": "./index.js"
+  },
+  "js": {},
+  "css": {},
+  "dependencies": {
+    "js": [
+      "allex:arrayoperations:lib",
+      "allex:environment:lib",
+      "allex:app:lib",
+      "allex:jqueryelements:lib"
+    ]
+  },
+	"additionaltargets": {
+    "css": [
+    ]
+  },
+  "protoboard": {
+    "role": "webcomponent",
+    "js_doc_filters": "^(src)"
+  }
+}
