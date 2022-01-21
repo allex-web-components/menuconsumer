@@ -78,8 +78,6 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
       }
     });
 
-
-
     desc.logic = desc.logic || [];
     desc.logic.push({
       triggers: 'element.'+this.config.appmenuname+':activeElement',
@@ -97,57 +95,10 @@ function createScreenFunctionality (execlib) {
   'use strict';
 
   require('./screenscreator')(execlib);
-  require('./screencreator')(execlib);
 }
 module.exports = createScreenFunctionality;
 
-},{"./screencreator":5,"./screenscreator":6}],5:[function(require,module,exports){
-function createScreen (execlib) {
-  'use strict';
-
-  var lib = execlib.lib,
-    lR = execlib.execSuite.libRegistry,
-    applib = lR.get('allex_applib'),
-    WebElement = applib.getElementType('WebElement');
-
-  function ScreenElement (id, options) {
-    WebElement.call(this, id, options);
-    this.environment = null;
-  }
-  lib.inherit(ScreenElement, WebElement);
-  ScreenElement.prototype.__cleanUp = function () {
-    if (this.environment) {
-      this.environment.destroy();
-    }
-    WebElement.prototype.__cleanUp.call(this);
-  };
-  ScreenElement.prototype.onLoaded = function () {
-    var envdesc;
-    envdesc = this.getConfigVal('environment');
-    if (envdesc) {
-      this.environment = new applib.DescriptorHandler(envdesc);
-      this.environment.load().then(
-        this.onEnvironment.bind(this),
-        this.destroy.bind(this)
-      );
-    }
-  };
-  ScreenElement.prototype.onEnvironment = function () {
-    if (lib.isArray(this.environment.environmentNames)) {
-      this.environment.environmentNames.forEach(this.establishLocalEnvironment.bind(this));
-    }
-    WebElement.prototype.onLoaded.call(this);
-  };
-  ScreenElement.prototype.establishLocalEnvironment = function (envname) {
-    this.environment.app.environments.get(envname).set('state', 'established');
-  };
-
-  applib.registerElementType('Screen', ScreenElement);
-}
-module.exports = createScreen;
-
-
-},{}],6:[function(require,module,exports){
+},{"./screenscreator":5}],5:[function(require,module,exports){
 function createScreens (execlib) {
   'use strict';
 
@@ -160,21 +111,26 @@ function createScreens (execlib) {
 
   function ScreensElement (id, options) {
     WebElement.call(this, id, options);
+    this.screenReadyToShow = this.createBufferableHookCollection();
   }
   lib.inherit(ScreensElement, WebElement);
   ScreensElement.prototype.__cleanUp = function () {
+    if (this.screenReadyToShow) {
+      this.screenReadyToShow.destroy();
+    }
+    this.screenReadyToShow = null;
     WebElement.prototype.__cleanUp.call(this);
   };
 
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
-    var mitemname, screendesc;
+    var mitemname, screendesc, screenel;
     if (!this.__children) {
       return;
     }
     mitemname = mitem ? mitem.id : null;
     screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'menuitem', mitemname);
     if (!screendesc) {
-      console.error('No screendesc for activemenuitem', mitemname, mitem);
+      //console.error('No screendesc for activemenuitem', mitemname, mitem);
       return;
     }
     if (this.__children.length > 0) {
@@ -184,8 +140,14 @@ function createScreens (execlib) {
     screendesc.screen.options = screendesc.screen.options || {};
     screendesc.screen.options.actual = false;
     screendesc.screen.options.self_selector = 'attrib:activescreen';
-    this.createElement(screendesc.screen);
-    this.getElement(screendesc.screen.name).set('actual', true);
+    try {
+      this.createElement(screendesc.screen);
+      screenel = this.getElement(screendesc.screen.name);
+      this.screenReadyToShow.fire(screenel);
+      screenel.set('actual', true);
+    } catch (e) {
+      console.error('Could not create and find', screendesc.screen.name, e);
+    }
   };
 
   applib.registerElementType('Screens', ScreensElement);

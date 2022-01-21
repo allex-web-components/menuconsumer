@@ -10,21 +10,26 @@ function createScreens (execlib) {
 
   function ScreensElement (id, options) {
     WebElement.call(this, id, options);
+    this.screenReadyToShow = this.createBufferableHookCollection();
   }
   lib.inherit(ScreensElement, WebElement);
   ScreensElement.prototype.__cleanUp = function () {
+    if (this.screenReadyToShow) {
+      this.screenReadyToShow.destroy();
+    }
+    this.screenReadyToShow = null;
     WebElement.prototype.__cleanUp.call(this);
   };
 
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
-    var mitemname, screendesc;
+    var mitemname, screendesc, screenel;
     if (!this.__children) {
       return;
     }
     mitemname = mitem ? mitem.id : null;
     screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'menuitem', mitemname);
     if (!screendesc) {
-      console.error('No screendesc for activemenuitem', mitemname, mitem);
+      //console.error('No screendesc for activemenuitem', mitemname, mitem);
       return;
     }
     if (this.__children.length > 0) {
@@ -34,8 +39,14 @@ function createScreens (execlib) {
     screendesc.screen.options = screendesc.screen.options || {};
     screendesc.screen.options.actual = false;
     screendesc.screen.options.self_selector = 'attrib:activescreen';
-    this.createElement(screendesc.screen);
-    this.getElement(screendesc.screen.name).set('actual', true);
+    try {
+      this.createElement(screendesc.screen);
+      screenel = this.getElement(screendesc.screen.name);
+      this.screenReadyToShow.fire(screenel);
+      screenel.set('actual', true);
+    } catch (e) {
+      console.error('Could not create and find', screendesc.screen.name, e);
+    }
   };
 
   applib.registerElementType('Screens', ScreensElement);

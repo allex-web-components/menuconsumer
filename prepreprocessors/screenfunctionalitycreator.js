@@ -15,8 +15,6 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
       }
     });
 
-
-
     desc.logic = desc.logic || [];
     desc.logic.push({
       triggers: 'element.'+this.config.appmenuname+':activeElement',
