@@ -37,13 +37,12 @@ function createScreens (execlib) {
     }
     screendesc.screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
     screendesc.screen.options = screendesc.screen.options || {};
-    screendesc.screen.options.actual = false;
+    screendesc.screen.options.actual = true;
     screendesc.screen.options.self_selector = 'attrib:activescreen';
     try {
       this.createElement(screendesc.screen);
       screenel = this.getElement(screendesc.screen.name);
       this.screenReadyToShow.fire(screenel);
-      screenel.set('actual', true);
     } catch (e) {
       console.error('Could not create and find', screendesc.screen.name, e);
     }

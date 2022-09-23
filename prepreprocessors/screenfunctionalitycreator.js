@@ -10,6 +10,7 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
       type: 'Screens',
       name: this.config.screenselement.name,
       options: {
+        actual: true,
         self_selector: this.config.screenselement.self_selector,
         screens: this.config.screens
       }
