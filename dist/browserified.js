@@ -112,6 +112,7 @@ function createScreens (execlib) {
 
   function ScreensElement (id, options) {
     WebElement.call(this, id, options);
+    this.screenLoading = false;
     this.screenReadyToShow = this.createBufferableHookCollection();
   }
   lib.inherit(ScreensElement, WebElement);
@@ -120,11 +121,12 @@ function createScreens (execlib) {
       this.screenReadyToShow.destroy();
     }
     this.screenReadyToShow = null;
+    this.screenLoading = null;
     WebElement.prototype.__cleanUp.call(this);
   };
 
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
-    var mitemname, screendesc, screenel;
+    var mitemname, screendesc, dfltcaption;
     if (!this.__children) {
       return;
     }
@@ -134,21 +136,28 @@ function createScreens (execlib) {
       //console.error('No screendesc for activemenuitem', mitemname, mitem);
       return;
     }
+    dfltcaption = this.getConfigVal('defaultCaption') || 'Default';
+    this.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
     if (this.__children.length > 0) {
       this.__children.traverse(function (chld) {chld.destroy();});
     }
     screendesc.screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
     screendesc.screen.options = screendesc.screen.options || {};
+    applib.descriptorApi.pushToArraySafe('onInitiallyLoaded', screendesc.screen.options, screenReadyToShowHandler.bind(this));
     screendesc.screen.options.actual = true;
     screendesc.screen.options.self_selector = 'attrib:activescreen';
     try {
       this.createElement(screendesc.screen);
-      screenel = this.getElement(screendesc.screen.name);
-      this.screenReadyToShow.fire(screenel);
     } catch (e) {
-      console.error('Could not create and find', screendesc.screen.name, e);
+      console.error('Could not create', screendesc.screen.name, e);
     }
   };
+  
+  //static, this is ScreensElement
+  function screenReadyToShowHandler (el) {
+    this.set('screenLoading', null);
+    this.screenReadyToShow.fire(el);
+  }
 
   applib.registerElementType('Screens', ScreensElement);
 }
