@@ -11,6 +11,7 @@ function createPrePreprocessors (execlib) {
   }
   lib.inherit(MenuConsumerPrePreprocessor, BasicProcessor);
   MenuConsumerPrePreprocessor.prototype.process = function (desc) {
+    var screentitleselector;
     if (!this.config) {
       throw new lib.Error('NO_CONFIG', 'I have no config');
     }
@@ -24,23 +25,26 @@ function createPrePreprocessors (execlib) {
       throw new lib.Error('NO_CONFIG_SCREENSELEMENTSUBCONFIG_NAME', 'The config.creenselement subconfig object must have a name');
     }
     this.processScreens(desc);
-    desc.logic = desc.logic || [];
-    if (this.config.screentitleselector) {
-      var sts = this.config.screentitleselector;
-      desc.logic.push({
-        triggers: 'element.'+this.config.appmenuname+':activeElement',
-        handler: this.onAppMenuActiveElementForScreenTitleSelector.bind(this)
-      });
+    screentitleselector = this.config.screentitleselector;
+    if (screentitleselector) {
+      desc.logic = desc.logic || [];
+      if (this.config.screentitleselector) {
+        desc.logic.push({
+          triggers: 'element.'+this.config.appmenuname+':activeElement',
+          handler: onAppMenuActiveElementForScreenTitleSelector.bind(null, screentitleselector)
+        });
+      }
     }
+    screentitleselector = null;
   };
-  MenuConsumerPrePreprocessor.prototype.onAppMenuActiveElementForScreenTitleSelector = function (actel) {
+  function onAppMenuActiveElementForScreenTitleSelector (screentitleselector, actel) {
     if (!actel) {
       return;
     }
-    if (!this.config.screentitleselector) {
+    if (!screentitleselector) {
       return;
     }
-    jQuery(this.config.screentitleselector).text(actel.get('title'));
+    jQuery(screentitleselector).text(actel.get('title'));
   };
 
   require('./screenfunctionalitycreator')(execlib, MenuConsumerPrePreprocessor);

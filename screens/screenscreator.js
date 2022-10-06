@@ -23,6 +23,18 @@ function createScreens (execlib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
+    return {
+      links: [{
+        source: 'environment.'+this.getConfigVal('environmentname')+':state',
+        target: 'element.'+myname+':actual',
+        filter: function (state) {
+          return state=='established'
+        }
+      }]
+    }
+  };
+
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
     var mitemname, screendesc, dfltcaption;
     if (!this.__children) {

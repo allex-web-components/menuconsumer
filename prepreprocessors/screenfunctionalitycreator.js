@@ -12,6 +12,7 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
       options: {
         actual: true,
         self_selector: this.config.screenselement.self_selector,
+        environmentname: this.config.screenselement.environment,
         screens: this.config.screens
       }
     });
