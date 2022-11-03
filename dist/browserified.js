@@ -1,102 +1,4 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-(function (execlib) {
-  'use strict';
-
-  require('./prepreprocessors')(execlib);
-  require('./screens')(execlib);
-
-
-})(ALLEX);
-
-},{"./prepreprocessors":2,"./screens":4}],2:[function(require,module,exports){
-function createPrePreprocessors (execlib) {
-  'use strict';
-
-  var lib = execlib.lib,
-    lR = execlib.execSuite.libRegistry,
-    applib = lR.get('allex_applib'),
-    BasicProcessor = applib.BasicProcessor;
-
-  function MenuConsumerPrePreprocessor () {
-    BasicProcessor.call(this);
-  }
-  lib.inherit(MenuConsumerPrePreprocessor, BasicProcessor);
-  MenuConsumerPrePreprocessor.prototype.process = function (desc) {
-    var screentitleselector;
-    if (!this.config) {
-      throw new lib.Error('NO_CONFIG', 'I have no config');
-    }
-    if (!this.config.appmenuname) {
-      throw new lib.Error('NO_CONFIG_APPMENUNAME', 'The config has no appmenuname');
-    }
-    if (!this.config.screenselement) {
-      throw new lib.Error('NO_CONFIG_SCREENSELEMENTSUBCONFIG', 'The config has no screenselement subconfig object');
-    }
-    if (!this.config.screenselement.name) {
-      throw new lib.Error('NO_CONFIG_SCREENSELEMENTSUBCONFIG_NAME', 'The config.creenselement subconfig object must have a name');
-    }
-    this.processScreens(desc);
-    screentitleselector = this.config.screentitleselector;
-    if (screentitleselector) {
-      desc.logic = desc.logic || [];
-      if (this.config.screentitleselector) {
-        desc.logic.push({
-          triggers: 'element.'+this.config.appmenuname+':activeElement',
-          handler: onAppMenuActiveElementForScreenTitleSelector.bind(null, screentitleselector)
-        });
-      }
-    }
-    screentitleselector = null;
-  };
-  function onAppMenuActiveElementForScreenTitleSelector (screentitleselector, actel) {
-    if (!actel) {
-      return;
-    }
-    if (!screentitleselector) {
-      return;
-    }
-    jQuery(screentitleselector).text(actel.get('title'));
-  };
-
-  require('./screenfunctionalitycreator')(execlib, MenuConsumerPrePreprocessor);
-
-  applib.registerPrePreprocessor('MenuConsumer', MenuConsumerPrePreprocessor);
-}
-module.exports = createPrePreprocessors;
-
-},{"./screenfunctionalitycreator":3}],3:[function(require,module,exports){
-function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuConsumerPrePreprocessor) {
-  'use strict';
-
-  var lib = execlib.lib,
-    lR = execlib.execSuite.libRegistry;
-
-  MenuConsumerPrePreprocessor.prototype.processScreens = function (desc) {
-    desc.elements = desc.elements||[];
-    desc.elements.push({
-      type: 'Screens',
-      name: this.config.screenselement.name,
-      options: {
-        actual: true,
-        self_selector: this.config.screenselement.self_selector,
-        environmentname: this.config.screenselement.environment,
-        screens: this.config.screens
-      }
-    });
-
-    desc.logic = desc.logic || [];
-    desc.logic.push({
-      triggers: 'element.'+this.config.appmenuname+':activeElement',
-      references: 'element.'+this.config.screenselement.name,
-      handler: function (screens, activeel) {
-        screens.handleActiveMenuItem(activeel);
-      }
-    });
-  };
-}
-module.exports = createScreenFunctionalityOnMenuConsumerPrePreprocessor;
-
-},{}],4:[function(require,module,exports){
 function createScreenFunctionality (execlib) {
   'use strict';
 
@@ -104,7 +6,7 @@ function createScreenFunctionality (execlib) {
 }
 module.exports = createScreenFunctionality;
 
-},{"./screenscreator":5}],5:[function(require,module,exports){
+},{"./screenscreator":2}],2:[function(require,module,exports){
 function createScreens (execlib) {
   'use strict';
 
@@ -180,4 +82,102 @@ function createScreens (execlib) {
 }
 module.exports = createScreens;
 
-},{}]},{},[1]);
+},{}],3:[function(require,module,exports){
+(function (execlib) {
+  'use strict';
+
+  require('./prepreprocessors')(execlib);
+  require('./elements')(execlib);
+
+
+})(ALLEX);
+
+},{"./elements":1,"./prepreprocessors":4}],4:[function(require,module,exports){
+function createPrePreprocessors (execlib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    lR = execlib.execSuite.libRegistry,
+    applib = lR.get('allex_applib'),
+    BasicProcessor = applib.BasicProcessor;
+
+  function MenuConsumerPrePreprocessor () {
+    BasicProcessor.call(this);
+  }
+  lib.inherit(MenuConsumerPrePreprocessor, BasicProcessor);
+  MenuConsumerPrePreprocessor.prototype.process = function (desc) {
+    var screentitleselector;
+    if (!this.config) {
+      throw new lib.Error('NO_CONFIG', 'I have no config');
+    }
+    if (!this.config.appmenuname) {
+      throw new lib.Error('NO_CONFIG_APPMENUNAME', 'The config has no appmenuname');
+    }
+    if (!this.config.screenselement) {
+      throw new lib.Error('NO_CONFIG_SCREENSELEMENTSUBCONFIG', 'The config has no screenselement subconfig object');
+    }
+    if (!this.config.screenselement.name) {
+      throw new lib.Error('NO_CONFIG_SCREENSELEMENTSUBCONFIG_NAME', 'The config.creenselement subconfig object must have a name');
+    }
+    this.processScreens(desc);
+    screentitleselector = this.config.screentitleselector;
+    if (screentitleselector) {
+      desc.logic = desc.logic || [];
+      if (this.config.screentitleselector) {
+        desc.logic.push({
+          triggers: 'element.'+this.config.appmenuname+':activeElement',
+          handler: onAppMenuActiveElementForScreenTitleSelector.bind(null, screentitleselector)
+        });
+      }
+    }
+    screentitleselector = null;
+  };
+  function onAppMenuActiveElementForScreenTitleSelector (screentitleselector, actel) {
+    if (!actel) {
+      return;
+    }
+    if (!screentitleselector) {
+      return;
+    }
+    jQuery(screentitleselector).text(actel.get('title'));
+  };
+
+  require('./screenfunctionalitycreator')(execlib, MenuConsumerPrePreprocessor);
+
+  applib.registerPrePreprocessor('MenuConsumer', MenuConsumerPrePreprocessor);
+}
+module.exports = createPrePreprocessors;
+
+},{"./screenfunctionalitycreator":5}],5:[function(require,module,exports){
+function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuConsumerPrePreprocessor) {
+  'use strict';
+
+  var lib = execlib.lib,
+    lR = execlib.execSuite.libRegistry;
+
+  MenuConsumerPrePreprocessor.prototype.processScreens = function (desc) {
+    desc.elements = desc.elements||[];
+    desc.elements.push({
+      type: 'Screens',
+      name: this.config.screenselement.name,
+      options: {
+        actual: true,
+        self_selector: this.config.screenselement.self_selector,
+        environmentname: this.config.screenselement.environment,
+        screens: this.config.screens
+      }
+    });
+
+    desc.logic = desc.logic || [];
+    desc.logic.push({
+      triggers: 'element.'+this.config.appmenuname+':activeElement',
+      references: 'element.'+this.config.screenselement.name,
+      handler: function (screens, activeel) {
+        screens.handleActiveMenuItem(activeel);
+      }
+    });
+  };
+}
+module.exports = createScreenFunctionalityOnMenuConsumerPrePreprocessor;
+
+},{}]},{},[3]);
