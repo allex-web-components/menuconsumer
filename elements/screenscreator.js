@@ -43,14 +43,38 @@ function createScreens (execlib) {
     mitemname = mitem ? mitem.id : null;
     screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'menuitem', mitemname);
     if (!screendesc) {
-      //console.error('No screendesc for activemenuitem', mitemname, mitem);
-      return;
+      if (!mitemname) {
+        screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'default', true);
+      }
+      if (!screendesc) {
+        //console.error('No screendesc for activemenuitem', mitemname, mitem);
+        return;
+      }
     }
     dfltcaption = this.getConfigVal('defaultCaption') || 'Default';
     this.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
+    mitemname = mitem ? mitem.id : null;
     if (this.__children.length > 0) {
       this.__children.traverse(function (chld) {chld.destroy();});
+      lib.runNext(onChildrenDeadActivate.bind(this, mitemname, screendesc));
+      mitemname = null;
+      screendesc = null;
+      return;
     }
+    onChildrenDeadActivate.call(this, mitemname, screendesc);
+  };
+  /*
+  ScreensElement.prototype.removeChild = function (chld) {
+    var ret = WebElement.prototype.removeChild.call(this, chld);
+    if (this.__children.length<1) {
+      console.log('All kids DED, last', chld);
+    }
+    return ret;
+  };
+  */
+  
+  //static, this is ScreensElement
+  function onChildrenDeadActivate (mitemname, screendesc) {
     screendesc.screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
     screendesc.screen.options = screendesc.screen.options || {};
     applib.descriptorApi.pushToArraySafe('onInitiallyLoaded', screendesc.screen.options, screenReadyToShowHandler.bind(this));
@@ -61,9 +85,7 @@ function createScreens (execlib) {
     } catch (e) {
       console.error('Could not create', screendesc.screen.name, e);
     }
-  };
-  
-  //static, this is ScreensElement
+  }
   function screenReadyToShowHandler (el) {
     this.set('screenLoading', null);
     this.screenReadyToShow.fire(el);
