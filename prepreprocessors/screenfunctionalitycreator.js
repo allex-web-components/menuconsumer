@@ -17,6 +17,18 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
       }
     });
 
+    desc.links = desc.links || [];
+    desc.links.push({
+      source: 'element.'+this.config.screenselement.name+':neededMenuItemName',
+      target: 'element.'+this.config.appmenuname+':activeElementName',
+    },{
+      source: 'element.'+this.config.screenselement.name+'!screenReadyToShow',
+      target: 'element.'+this.config.appmenuname+':activeElementName',
+      filter: function (el) {
+        return el.getConfigVal('miname');
+      }
+    });
+
     desc.logic = desc.logic || [];
     desc.logic.push({
       triggers: 'element.'+this.config.appmenuname+':activeElement',

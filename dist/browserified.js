@@ -21,9 +21,15 @@ function createScreens (execlib) {
     WebElement.call(this, id, options);
     this.screenLoading = false;
     this.screenReadyToShow = this.createBufferableHookCollection();
+    this.neededMenuItemName = null;
+    this.mitemname = null;
+    this.screendesc = null;
   }
   lib.inherit(ScreensElement, WebElement);
   ScreensElement.prototype.__cleanUp = function () {
+    this.screendesc = null;
+    this.mitemname = null;
+    this.neededMenuItemName = null;
     if (this.screenReadyToShow) {
       this.screenReadyToShow.destroy();
     }
@@ -42,6 +48,32 @@ function createScreens (execlib) {
         }
       }]
     }
+  };
+  ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
+    var mitemname = this.mitemname;
+    var screendesc = this.screendesc;
+    var miname;
+    var screen;
+    this.mitemname = null;
+    this.screendesc = null;
+    if (!screendesc) {
+      return;
+    }
+    miname = (screendesc.menuitem || mitemname || 'Default');
+    screen = screendesc.screen;
+    screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
+    screen.options = screen.options || {};
+    applib.descriptorApi.pushToArraySafe('onInitiallyLoaded', screen.options, screenReadyToShowHandler.bind(this));
+    screen.options.actual = true;
+    screen.options.self_selector = 'attrib:activescreen';
+    screen.options.miname = miname;
+    return {
+      elements: [{
+        name: myname+'.'+screen.name,
+        type: screen.type,
+        options: screen.options
+      }]
+    };
   };
 
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
@@ -62,38 +94,21 @@ function createScreens (execlib) {
     }
     dfltcaption = this.getConfigVal('defaultCaption') || 'Default';
     this.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
+    this.mitemname = mitemname;
+    this.screendesc = screendesc;
     mitemname = mitem ? mitem.id : null;
     if (this.__children.length > 0) {
       this.__children.traverse(function (chld) {chld.destroy();});
-      lib.runNext(onChildrenDeadActivate.bind(this, mitemname, screendesc));
-      mitemname = null;
-      screendesc = null;
+      lib.runNext(onChildrenDeadActivate.bind(this));
       return;
     }
-    onChildrenDeadActivate.call(this, mitemname, screendesc);
+    onChildrenDeadActivate.call(this);
   };
-  /*
-  ScreensElement.prototype.removeChild = function (chld) {
-    var ret = WebElement.prototype.removeChild.call(this, chld);
-    if (this.__children.length<1) {
-      console.log('All kids DED, last', chld);
-    }
-    return ret;
-  };
-  */
   
   //static, this is ScreensElement
-  function onChildrenDeadActivate (mitemname, screendesc) {
-    screendesc.screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
-    screendesc.screen.options = screendesc.screen.options || {};
-    applib.descriptorApi.pushToArraySafe('onInitiallyLoaded', screendesc.screen.options, screenReadyToShowHandler.bind(this));
-    screendesc.screen.options.actual = true;
-    screendesc.screen.options.self_selector = 'attrib:activescreen';
-    try {
-      this.createElement(screendesc.screen);
-    } catch (e) {
-      console.error('Could not create', screendesc.screen.name, e);
-    }
+  function onChildrenDeadActivate () {
+    this.set('actual', false);
+    this.set('actual', true);
   }
   function screenReadyToShowHandler (el) {
     this.set('screenLoading', null);
@@ -187,6 +202,18 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
         self_selector: this.config.screenselement.self_selector,
         environmentname: this.config.screenselement.environment,
         screens: this.config.screens
+      }
+    });
+
+    desc.links = desc.links || [];
+    desc.links.push({
+      source: 'element.'+this.config.screenselement.name+':neededMenuItemName',
+      target: 'element.'+this.config.appmenuname+':activeElementName',
+    },{
+      source: 'element.'+this.config.screenselement.name+'!screenReadyToShow',
+      target: 'element.'+this.config.appmenuname+':activeElementName',
+      filter: function (el) {
+        return el.getConfigVal('miname');
       }
     });
 
