@@ -6,7 +6,8 @@ function createScreens (execlib) {
     applib = lR.get('allex_applib'),
     BasicElement = applib.BasicElement,
     WebElement = applib.getElementType('WebElement'),
-    arryops = lR.get('allex_arrayoperationslib');
+    arryops = lR.get('allex_arrayoperationslib'),
+    jobcores = require('./jobcores')(lib, applib, arryops);
 
   function ScreensElement (id, options) {
     WebElement.call(this, id, options);
@@ -15,9 +16,11 @@ function createScreens (execlib) {
     this.neededMenuItemName = null;
     this.mitemname = null;
     this.screendesc = null;
+    this.needMenuItemListener = null;
   }
   lib.inherit(ScreensElement, WebElement);
   ScreensElement.prototype.__cleanUp = function () {
+    purgeNeedMenuItemListener.call(this);
     this.screendesc = null;
     this.mitemname = null;
     this.neededMenuItemName = null;
@@ -45,6 +48,7 @@ function createScreens (execlib) {
     var screendesc = this.screendesc;
     var miname;
     var screen;
+    var elementname;
     this.mitemname = null;
     this.screendesc = null;
     if (!screendesc) {
@@ -58,9 +62,10 @@ function createScreens (execlib) {
     screen.options.actual = true;
     screen.options.self_selector = 'attrib:activescreen';
     screen.options.miname = miname;
+    elementname = myname+'.'+screen.name;
     return {
       elements: [{
-        name: myname+'.'+screen.name,
+        name: elementname,
         type: screen.type,
         options: screen.options
       }]
@@ -68,43 +73,36 @@ function createScreens (execlib) {
   };
 
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
-    var mitemname, screendesc, dfltcaption;
-    if (!this.__children) {
-      return;
-    }
-    mitemname = mitem ? mitem.id : null;
-    screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'menuitem', mitemname);
-    if (!screendesc) {
-      if (!mitemname) {
-        screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'default', true);
-      }
-      if (!screendesc) {
-        //console.error('No screendesc for activemenuitem', mitemname, mitem);
-        return;
-      }
-    }
-    dfltcaption = this.getConfigVal('defaultCaption') || 'Default';
-    this.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
-    this.mitemname = mitemname;
-    this.screendesc = screendesc;
-    mitemname = mitem ? mitem.id : null;
-    if (this.__children.length > 0) {
-      this.__children.traverse(function (chld) {chld.destroy();});
-      lib.runNext(onChildrenDeadActivate.bind(this));
-      return;
-    }
-    onChildrenDeadActivate.call(this);
+    return lib.qlib.promise2console(this.jobs.run('.', lib.qlib.newSteppedJobOnSteppedInstance(
+      new jobcores.ActiveMenuItemHandler(this, mitem)
+    )), 'handleActiveMenuItem');
   };
-  
+
+  ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded) {
+    if (!menuitemneeded) {
+      return;
+    }
+    if (!menuitemneeded.name) {
+      return;
+    }
+  };
+
   //static, this is ScreensElement
-  function onChildrenDeadActivate () {
-    this.set('actual', false);
-    this.set('actual', true);
-  }
   function screenReadyToShowHandler (el) {
     this.set('screenLoading', null);
     this.screenReadyToShow.fire(el);
+    purgeNeedMenuItemListener.call(this);
+    if (el && el.needMenuItem && lib.isFunction(el.needMenuItem.fire)) {
+      this.needMenuItemListener = el.needMenuItem.attach(this.onMenuItemNeeded.bind(this));
+    }
   }
+  function purgeNeedMenuItemListener () {
+    if (this.needMenuItemListener) {
+      this.needMenuItemListener.destroy();
+    }
+    this.needMenuItemListener = null;
+  }
+  //endof static
 
   applib.registerElementType('Screens', ScreensElement);
 }

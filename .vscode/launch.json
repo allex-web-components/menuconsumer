@@ -7,7 +7,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Component Build",
+      "name": "MenuConsumer Build",
       "skipFiles": [
         "<node_internals>/**"
       ],
