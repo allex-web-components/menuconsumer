@@ -13,17 +13,11 @@ function createScreens (execlib) {
     WebElement.call(this, id, options);
     this.screenLoading = false;
     this.screenReadyToShow = this.createBufferableHookCollection();
-    this.neededMenuItemName = null;
-    this.mitemname = null;
-    this.screendesc = null;
     this.needMenuItemListener = null;
   }
   lib.inherit(ScreensElement, WebElement);
   ScreensElement.prototype.__cleanUp = function () {
     purgeNeedMenuItemListener.call(this);
-    this.screendesc = null;
-    this.mitemname = null;
-    this.neededMenuItemName = null;
     if (this.screenReadyToShow) {
       this.screenReadyToShow.destroy();
     }
@@ -32,6 +26,7 @@ function createScreens (execlib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  /*
   ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
     return {
       links: [{
@@ -43,14 +38,13 @@ function createScreens (execlib) {
       }]
     }
   };
-  ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
-    var mitemname = this.mitemname;
-    var screendesc = this.screendesc;
+  */
+  ScreensElement.prototype.environmentDescriptor_for_CentralScreen = function (myname, config) {
+    var mitemname = config.mitemname;
+    var screendesc = config.screendesc;
     var miname;
     var screen;
     var elementname;
-    this.mitemname = null;
-    this.screendesc = null;
     if (!screendesc) {
       return;
     }
@@ -78,23 +72,21 @@ function createScreens (execlib) {
     )), 'handleActiveMenuItem');
   };
 
-  ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded) {
-    if (!menuitemneeded) {
+  ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded, screenoverlay) {
+    if (!lib.isString(menuitemneeded)) {
       return;
     }
-    if (!menuitemneeded.name) {
-      return;
-    }
+    applib.safeRunMethodOnAppElement(this.getConfigVal('appmenuname'), 'setActiveElementNameWithExtras', menuitemneeded, screenoverlay);
   };
 
   //static, this is ScreensElement
   function screenReadyToShowHandler (el) {
     this.set('screenLoading', null);
-    this.screenReadyToShow.fire(el);
     purgeNeedMenuItemListener.call(this);
     if (el && el.needMenuItem && lib.isFunction(el.needMenuItem.fire)) {
       this.needMenuItemListener = el.needMenuItem.attach(this.onMenuItemNeeded.bind(this));
     }
+    this.screenReadyToShow.fire(el);
   }
   function purgeNeedMenuItemListener () {
     if (this.needMenuItemListener) {

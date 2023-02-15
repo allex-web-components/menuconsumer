@@ -13,15 +13,13 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
         actual: true,
         self_selector: this.config.screenselement.self_selector,
         environmentname: this.config.screenselement.environment,
-        screens: this.config.screens
+        screens: this.config.screens,
+        appmenuname: this.config.appmenuname
       }
     });
 
     desc.links = desc.links || [];
     desc.links.push({
-      source: 'element.'+this.config.screenselement.name+':neededMenuItemName',
-      target: 'element.'+this.config.appmenuname+':activeElementName',
-    },{
       source: 'element.'+this.config.screenselement.name+'!screenReadyToShow',
       target: 'element.'+this.config.appmenuname+':activeElementName',
       filter: function (el) {

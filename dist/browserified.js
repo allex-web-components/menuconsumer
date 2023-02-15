@@ -23,11 +23,12 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
   };
 
   ActiveMenuItemHandlerJobCore.prototype.activate = function () {
+    /*
     lib.qlib.promise2console(applib.queryAppProperties({
       'options.account': 'datasource.ActualComposite:data'
     }), 'datasource.ActualComposite:data');
-
-    var mitem, mitemname, screendesc, screendescovl, dfltcaption;
+    */
+    var mitem, mitemname, screendesc, screendescovl, dfltcaption, config;
     if (!this.screens.__children) {
       return;
     }
@@ -42,6 +43,8 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
         //console.error('No screendesc for activemenuitem', mitemname, mitem);
         return;
       }
+      this.screens.onMenuItemNeeded(screendesc.menuitem);
+      return;
     }
     screendescovl = mitem ? mitem.getConfigVal('screenoverlay') : null;
     if (screendescovl) {
@@ -49,27 +52,26 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
     }
     dfltcaption = this.screens.getConfigVal('defaultCaption') || 'Default';
     this.screens.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
-    this.screens.mitemname = mitemname;
-    this.screens.screendesc = screendesc;
+    config = {
+      mitemname: mitemname,
+      screendesc: screendesc
+    };
     mitemname = mitem ? mitem.id : null;
     if (this.screens.__children.length > 0) {
       this.screens.__children.traverse(function (chld) {chld.destroy();});
-      lib.runNext(onChildrenDeadActivate.bind(this.screens));
-      return;
+      return lib.q(config);
     }
-    onChildrenDeadActivate.call(this.screens);
+    return config;
   };
+  ActiveMenuItemHandlerJobCore.prototype.onChildrenDeadActivate = function (config) {
+    return config ? this.screens.loadAdHocEnvironmentJob('CentralScreen', config).go() : null;
+  };
+  
 
   ActiveMenuItemHandlerJobCore.prototype.steps = [
-    'activate'
+    'activate',
+    'onChildrenDeadActivate'
   ];
-
-  //static, this is ScreensElement
-  function onChildrenDeadActivate () {
-    this.set('actual', false);
-    this.set('actual', true);
-  }
-  //endof static
 
   mylib.ActiveMenuItemHandler = ActiveMenuItemHandlerJobCore;
 }
@@ -129,17 +131,11 @@ function createScreens (execlib) {
     WebElement.call(this, id, options);
     this.screenLoading = false;
     this.screenReadyToShow = this.createBufferableHookCollection();
-    this.neededMenuItemName = null;
-    this.mitemname = null;
-    this.screendesc = null;
     this.needMenuItemListener = null;
   }
   lib.inherit(ScreensElement, WebElement);
   ScreensElement.prototype.__cleanUp = function () {
     purgeNeedMenuItemListener.call(this);
-    this.screendesc = null;
-    this.mitemname = null;
-    this.neededMenuItemName = null;
     if (this.screenReadyToShow) {
       this.screenReadyToShow.destroy();
     }
@@ -148,6 +144,7 @@ function createScreens (execlib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  /*
   ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
     return {
       links: [{
@@ -159,14 +156,13 @@ function createScreens (execlib) {
       }]
     }
   };
-  ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
-    var mitemname = this.mitemname;
-    var screendesc = this.screendesc;
+  */
+  ScreensElement.prototype.environmentDescriptor_for_CentralScreen = function (myname, config) {
+    var mitemname = config.mitemname;
+    var screendesc = config.screendesc;
     var miname;
     var screen;
     var elementname;
-    this.mitemname = null;
-    this.screendesc = null;
     if (!screendesc) {
       return;
     }
@@ -194,23 +190,21 @@ function createScreens (execlib) {
     )), 'handleActiveMenuItem');
   };
 
-  ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded) {
-    if (!menuitemneeded) {
+  ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded, screenoverlay) {
+    if (!lib.isString(menuitemneeded)) {
       return;
     }
-    if (!menuitemneeded.name) {
-      return;
-    }
+    applib.safeRunMethodOnAppElement(this.getConfigVal('appmenuname'), 'setActiveElementNameWithExtras', menuitemneeded, screenoverlay);
   };
 
   //static, this is ScreensElement
   function screenReadyToShowHandler (el) {
     this.set('screenLoading', null);
-    this.screenReadyToShow.fire(el);
     purgeNeedMenuItemListener.call(this);
     if (el && el.needMenuItem && lib.isFunction(el.needMenuItem.fire)) {
       this.needMenuItemListener = el.needMenuItem.attach(this.onMenuItemNeeded.bind(this));
     }
+    this.screenReadyToShow.fire(el);
   }
   function purgeNeedMenuItemListener () {
     if (this.needMenuItemListener) {
@@ -228,13 +222,45 @@ module.exports = createScreens;
 (function (execlib) {
   'use strict';
 
+  var lR = execlib.execSuite.libRegistry,
+    mylib = {};
+
   require('./prepreprocessors')(execlib);
   require('./elements')(execlib);
 
+  require('./mixins')(execlib, mylib);
 
+  lR.register('allex_menuconsumerwebcomponent', mylib);
 })(ALLEX);
 
-},{"./elements":1,"./prepreprocessors":7}],7:[function(require,module,exports){
+},{"./elements":1,"./mixins":7,"./prepreprocessors":9}],7:[function(require,module,exports){
+function createMixins (lib, mylib) {
+  var mixins = {};
+  require('./needmenuitemcreator')(lib, mixins);
+  mylib.mixins = mixins;
+}
+module.exports = createMixins;
+},{"./needmenuitemcreator":8}],8:[function(require,module,exports){
+function createNeedMenuItemMixin (lib, mylib) {
+  'use strict';
+
+  function NeedMenuItemMixin () {
+    this.needMenuItem = this.createBufferableHookCollection();
+  }
+  NeedMenuItemMixin.prototype.destroy = function () {
+    if(this.needMenuItem) {
+       this.needMenuItem.destroy();
+    }
+    this.needMenuItem = null;
+  };
+  NeedMenuItemMixin.addMethods = function (klass) {
+
+  };
+
+  mylib.NeedMenuItem = NeedMenuItemMixin;
+}
+module.exports = createNeedMenuItemMixin;
+},{}],9:[function(require,module,exports){
 function createPrePreprocessors (execlib) {
   'use strict';
 
@@ -290,7 +316,7 @@ function createPrePreprocessors (execlib) {
 }
 module.exports = createPrePreprocessors;
 
-},{"./screenfunctionalitycreator":8}],8:[function(require,module,exports){
+},{"./screenfunctionalitycreator":10}],10:[function(require,module,exports){
 function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuConsumerPrePreprocessor) {
   'use strict';
 
@@ -306,15 +332,13 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
         actual: true,
         self_selector: this.config.screenselement.self_selector,
         environmentname: this.config.screenselement.environment,
-        screens: this.config.screens
+        screens: this.config.screens,
+        appmenuname: this.config.appmenuname
       }
     });
 
     desc.links = desc.links || [];
     desc.links.push({
-      source: 'element.'+this.config.screenselement.name+':neededMenuItemName',
-      target: 'element.'+this.config.appmenuname+':activeElementName',
-    },{
       source: 'element.'+this.config.screenselement.name+'!screenReadyToShow',
       target: 'element.'+this.config.appmenuname+':activeElementName',
       filter: function (el) {

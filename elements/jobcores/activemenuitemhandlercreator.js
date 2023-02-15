@@ -14,11 +14,12 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
   };
 
   ActiveMenuItemHandlerJobCore.prototype.activate = function () {
+    /*
     lib.qlib.promise2console(applib.queryAppProperties({
       'options.account': 'datasource.ActualComposite:data'
     }), 'datasource.ActualComposite:data');
-
-    var mitem, mitemname, screendesc, screendescovl, dfltcaption;
+    */
+    var mitem, mitemname, screendesc, screendescovl, dfltcaption, config;
     if (!this.screens.__children) {
       return;
     }
@@ -33,6 +34,8 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
         //console.error('No screendesc for activemenuitem', mitemname, mitem);
         return;
       }
+      this.screens.onMenuItemNeeded(screendesc.menuitem);
+      return;
     }
     screendescovl = mitem ? mitem.getConfigVal('screenoverlay') : null;
     if (screendescovl) {
@@ -40,27 +43,26 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
     }
     dfltcaption = this.screens.getConfigVal('defaultCaption') || 'Default';
     this.screens.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
-    this.screens.mitemname = mitemname;
-    this.screens.screendesc = screendesc;
+    config = {
+      mitemname: mitemname,
+      screendesc: screendesc
+    };
     mitemname = mitem ? mitem.id : null;
     if (this.screens.__children.length > 0) {
       this.screens.__children.traverse(function (chld) {chld.destroy();});
-      lib.runNext(onChildrenDeadActivate.bind(this.screens));
-      return;
+      return lib.q(config);
     }
-    onChildrenDeadActivate.call(this.screens);
+    return config;
   };
+  ActiveMenuItemHandlerJobCore.prototype.onChildrenDeadActivate = function (config) {
+    return config ? this.screens.loadAdHocEnvironmentJob('CentralScreen', config).go() : null;
+  };
+  
 
   ActiveMenuItemHandlerJobCore.prototype.steps = [
-    'activate'
+    'activate',
+    'onChildrenDeadActivate'
   ];
-
-  //static, this is ScreensElement
-  function onChildrenDeadActivate () {
-    this.set('actual', false);
-    this.set('actual', true);
-  }
-  //endof static
 
   mylib.ActiveMenuItemHandler = ActiveMenuItemHandlerJobCore;
 }
