@@ -13,11 +13,13 @@ function createScreens (execlib) {
     WebElement.call(this, id, options);
     this.screenLoading = false;
     this.screenReadyToShow = this.createBufferableHookCollection();
+    this.elementToActivate = null;
     this.needMenuItemListener = null;
   }
   lib.inherit(ScreensElement, WebElement);
-  ScreensElement.prototype.__cleanUp = function () {
+  ScreensElement.prototype.__cleanUp = function () {    
     purgeNeedMenuItemListener.call(this);
+    this.elementToActivate = null;
     if (this.screenReadyToShow) {
       this.screenReadyToShow.destroy();
     }
@@ -26,19 +28,23 @@ function createScreens (execlib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
-  /*
   ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
     return {
-      links: [{
-        source: 'environment.'+this.getConfigVal('environmentname')+':state',
-        target: 'element.'+myname+':actual',
-        filter: function (state) {
-          return state=='established'
-        }
+      logic: [{
+        triggers: 'environment.'+this.getConfigVal('environmentname')+':state',
+        handler: this.onEnvironmentState.bind(this)
       }]
     }
   };
-  */
+  ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
+    return {
+      logic: [{
+        triggers: 'element.'+myname+':elementToActivate',
+        handler: this.handleActiveMenuItem.bind(this)
+      }]
+    }
+  };
+
   ScreensElement.prototype.environmentDescriptor_for_CentralScreen = function (myname, config) {
     var mitemname = config.mitemname;
     var screendesc = config.screendesc;
@@ -66,10 +72,14 @@ function createScreens (execlib) {
     };
   };
 
+  ScreensElement.prototype.set_elementToActivate = function (el) {
+    this.elementToActivate = el;
+    return true;
+  };
   ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
-    return lib.qlib.promise2console(this.jobs.run('.', lib.qlib.newSteppedJobOnSteppedInstance(
+    this.jobs.run('.', lib.qlib.newSteppedJobOnSteppedInstance(
       new jobcores.ActiveMenuItemHandler(this, mitem)
-    )), 'handleActiveMenuItem');
+    ));
   };
 
   ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded, screenoverlay) {
@@ -77,6 +87,20 @@ function createScreens (execlib) {
       return;
     }
     applib.safeRunMethodOnAppElement(this.getConfigVal('appmenuname'), 'setActiveElementNameWithExtras', menuitemneeded, screenoverlay);
+  };
+
+  ScreensElement.prototype.onEnvironmentState = function (state) {
+    var actual = this.get('actual');
+    if (!lib.isVal(state)) {
+      this.set('actual', false);
+      return;
+    }
+    if (actual) {
+      return;
+    }
+    if (state=='established') {
+      this.set('actual', true);
+    }
   };
 
   //static, this is ScreensElement
