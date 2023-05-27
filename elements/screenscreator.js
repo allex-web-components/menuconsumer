@@ -3,11 +3,12 @@ function createScreens (execlib) {
 
   var lib = execlib.lib,
     lR = execlib.execSuite.libRegistry,
+    browserlib = lR.get('allex_browserwebcomponent'),
     applib = lR.get('allex_applib'),
     BasicElement = applib.BasicElement,
     WebElement = applib.getElementType('WebElement'),
     arryops = lR.get('allex_arrayoperationslib'),
-    jobcores = require('./jobcores')(lib, applib, arryops);
+    jobcores = require('./jobcores')(execlib, applib, arryops);
 
   function ScreensElement (id, options) {
     WebElement.call(this, id, options);
@@ -105,6 +106,7 @@ function createScreens (execlib) {
 
   //static, this is ScreensElement
   function screenReadyToShowHandler (el) {
+    browserlib.viewTransition.end();
     this.set('screenLoading', null);
     purgeNeedMenuItemListener.call(this);
     if (el && el.needMenuItem && lib.isFunction(el.needMenuItem.fire)) {

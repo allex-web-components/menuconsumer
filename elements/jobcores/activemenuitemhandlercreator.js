@@ -1,4 +1,4 @@
-function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
+function createActiveMenuItemHandlerJobCore (lib, browserlib, applib, arryops, mylib) {
   'use strict';
 
   var Base = mylib.Base;
@@ -19,7 +19,7 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
       'options.account': 'datasource.ActualComposite:data'
     }), 'datasource.ActualComposite:data');
     */
-    var mitem, mitemname, screendesc, screendescovl, dfltcaption, config;
+    var mitem, mitemname, screendesc, screendescovl, dfltcaption, d, ret, config;
     if (!this.screens.__children) {
       return;
     }
@@ -43,17 +43,31 @@ function createActiveMenuItemHandlerJobCore (lib, applib, arryops, mylib) {
     }
     dfltcaption = this.screens.getConfigVal('defaultCaption') || 'Default';
     this.screens.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
+    d = lib.q.defer();
+    ret = d.promise;
     config = {
       mitemname: mitemname,
       screendesc: screendesc
     };
-    mitemname = mitem ? mitem.id : null;
+    browserlib.viewTransition.start(screensDestroyer.bind(this, d, config));
+    config = null;
+    d = null;
+    return ret;
+    /*
+    */
+  };
+  function screensDestroyer (defer, config) {
     if (this.screens.__children.length > 0) {
       this.screens.__children.traverse(function (chld) {chld.destroy();});
-      return lib.q(config);
+      lib.runNext(defer.resolve.bind(defer, config));
+      defer = null;
+      config = null;
+      return;
     }
-    return config;
-  };
+    defer.resolve(config);
+    defer = null;
+    config = null;
+  }
   ActiveMenuItemHandlerJobCore.prototype.onChildrenDeadActivate = function (config) {
     return config ? this.screens.loadAdHocEnvironmentJob('CentralScreen', config).go() : null;
   };

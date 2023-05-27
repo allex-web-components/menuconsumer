@@ -1,10 +1,13 @@
-function createJobCores (lib, applib, arryops) {
+function createJobCores (execlib, applib, arryops) {
   'use strict';
+
+  var lR = execlib.execSuite.libRegistry;
+  var browserlib = lR.get('allex_browserwebcomponent');
 
   var mylib = {};
 
-  require('./basecreator')(lib, mylib);
-  require('./activemenuitemhandlercreator')(lib, applib, arryops, mylib);
+  require('./basecreator')(execlib.lib, mylib);
+  require('./activemenuitemhandlercreator')(execlib.lib, browserlib, applib, arryops, mylib);
 
   return mylib;
 }

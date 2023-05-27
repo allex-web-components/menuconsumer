@@ -9,6 +9,7 @@
       "allex:arrayoperations:lib",
       "allex:environment:lib",
       "allex:app:lib",
+      "allex:browser:webcomponent",
       "allex:jqueryelements:lib"
     ]
   },
