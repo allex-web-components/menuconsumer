@@ -30,12 +30,17 @@ function createScreens (execlib) {
   };
 
   ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
-    return {
-      logic: [{
-        triggers: 'environment.'+this.getConfigVal('environmentname')+':state',
+    var ret = {
+      logic: []
+    };
+    var environmentname = this.getConfigVal('environmentname');
+    if (environmentname) {
+      ret.logic.push({
+        triggers: 'environment.'+environmentname+':state',
         handler: this.onEnvironmentState.bind(this)
-      }]
+      });
     }
+    return ret;
   };
   ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
     return {

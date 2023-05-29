@@ -165,12 +165,17 @@ function createScreens (execlib) {
   };
 
   ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
-    return {
-      logic: [{
-        triggers: 'environment.'+this.getConfigVal('environmentname')+':state',
+    var ret = {
+      logic: []
+    };
+    var environmentname = this.getConfigVal('environmentname');
+    if (environmentname) {
+      ret.logic.push({
+        triggers: 'environment.'+environmentname+':state',
         handler: this.onEnvironmentState.bind(this)
-      }]
+      });
     }
+    return ret;
   };
   ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
     return {
@@ -372,7 +377,7 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
       type: 'Screens',
       name: this.config.screenselement.name,
       options: {
-        actual: false,
+        actual: this.config.actual,
         self_selector: this.config.screenselement.self_selector,
         environmentname: this.config.screenselement.environment,
         screens: this.config.screens,
