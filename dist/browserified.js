@@ -140,7 +140,6 @@ function createScreens (execlib) {
     lR = execlib.execSuite.libRegistry,
     browserlib = lR.get('allex_browserwebcomponent'),
     applib = lR.get('allex_applib'),
-    BasicElement = applib.BasicElement,
     WebElement = applib.getElementType('WebElement'),
     arryops = lR.get('allex_arrayoperationslib'),
     jobcores = require('./jobcores')(execlib, applib, arryops);
