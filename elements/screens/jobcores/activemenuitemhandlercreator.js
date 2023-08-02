@@ -24,31 +24,12 @@ function createActiveMenuItemHandlerJobCore (lib, browserlib, applib, arryops, m
       return;
     }
     mitem = this.item;
-    mitemname = mitem ? mitem.id : null;
-    screendesc = arryops.findElementWithProperty(this.screens.getConfigVal('screens'), 'menuitem', mitemname);
-    if (!screendesc) {
-      if (!mitemname) {
-        screendesc = arryops.findElementWithProperty(this.screens.getConfigVal('screens'), 'default', true);
-      }
-      if (!screendesc) {
-        //console.error('No screendesc for activemenuitem', mitemname, mitem);
-        return;
-      }
-      this.screens.onMenuItemNeeded(screendesc.menuitem);
+    config = this.screens.configForMenuItem(mitem);
+    if (!config) {
       return;
     }
-    screendescovl = mitem ? mitem.getConfigVal('screenoverlay') : null;
-    if (screendescovl) {
-      screendesc = lib.extend({}, screendesc, {screen: screendescovl});
-    }
-    dfltcaption = this.screens.getConfigVal('defaultCaption') || 'Default';
-    this.screens.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
     d = lib.q.defer();
     ret = d.promise;
-    config = {
-      mitemname: mitemname,
-      screendesc: screendesc
-    };
     browserlib.viewTransition.start(screensDestroyer.bind(this, d, config));
     config = null;
     d = null;

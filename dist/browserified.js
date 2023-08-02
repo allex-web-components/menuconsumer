@@ -1,12 +1,272 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+function createScreensBase (execlib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    lR = execlib.execSuite.libRegistry,
+    browserlib = lR.get('allex_browserwebcomponent'),
+    applib = lR.get('allex_applib'),
+    arryops = lR.get('allex_arrayoperationslib'),
+    WebElement = applib.getElementType('WebElement');
+
+  function ScreensBaseElement (id, options) {
+    WebElement.call(this, id, options);
+    this.screenReadyToShow = this.createBufferableHookCollection();
+    this.elementToActivate = null;
+    this.screenLoading = false;
+    this.needMenuItemListener = null;
+  }
+  lib.inherit(ScreensBaseElement, WebElement);
+  ScreensBaseElement.prototype.__cleanUp = function () {
+    purgeNeedMenuItemListener.call(this);
+    this.screenLoading = null;
+    this.elementToActivate = null;
+    if (this.screenReadyToShow) {
+      this.screenReadyToShow.destroy();
+    }
+    this.screenReadyToShow = null;
+    WebElement.prototype.__cleanUp.call(this);
+  };
+
+  ScreensBaseElement.prototype.staticEnvironmentDescriptor = function (myname) {
+    var ret = {
+      logic: []
+    };
+    var environmentname = this.getConfigVal('environmentname');
+    if (environmentname) {
+      ret.logic.push({
+        triggers: 'environment.'+environmentname+':state',
+        handler: this.onEnvironmentState.bind(this)
+      });
+    }
+    return ret;
+  };
+  ScreensBaseElement.prototype.actualEnvironmentDescriptor = function (myname) {
+    return {
+      logic: [{
+        triggers: 'element.'+myname+':elementToActivate',
+        handler: this.handleActiveMenuItem.bind(this)
+      }]
+    }
+  };
+
+  ScreensBaseElement.prototype.set_elementToActivate = function (el) {
+    this.elementToActivate = el;
+    return true;
+  };
+  ScreensBaseElement.prototype.onMenuItemNeeded = function (menuitemneeded, screenoverlay) {
+    if (!lib.isString(menuitemneeded)) {
+      return;
+    }
+    applib.safeRunMethodOnAppElement(this.getConfigVal('appmenuname'), 'setActiveElementNameWithExtras', menuitemneeded, screenoverlay);
+  };
+  ScreensBaseElement.prototype.onEnvironmentState = function (state) {
+    var actual = this.get('actual');
+    if (!lib.isVal(state)) {
+      this.set('actual', false);
+      return;
+    }
+    if (actual) {
+      return;
+    }
+    if (state=='established') {
+      this.set('actual', true);
+    }
+  };
+
+  ScreensBaseElement.prototype.handleActiveMenuItem = function (mitem) {
+    throw new lib.Error('NOT_IMPLEMENTED', this.constructor.name+' has to implement handleActiveMenuItem');
+  };
+
+
+  ScreensBaseElement.prototype.configForMenuItem = function (mitem) {
+    var mitem, mitemname, screendesc, screendescovl, dfltcaption;
+    mitemname = mitem ? mitem.id : null;
+    screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'menuitem', mitemname);
+    if (!screendesc) {
+      if (!mitemname) {
+        screendesc = arryops.findElementWithProperty(this.getConfigVal('screens'), 'default', true);
+      }
+      if (!screendesc) {
+        //console.error('No screendesc for activemenuitem', mitemname, mitem);
+        return null;
+      }
+      this.onMenuItemNeeded(screendesc.menuitem);
+      return null;
+    }
+    screendescovl = mitem ? mitem.getConfigVal('screenoverlay') : null;
+    if (screendescovl) {
+      screendesc = lib.extend({}, screendesc, {screen: screendescovl});
+    }
+    dfltcaption = this.getConfigVal('defaultCaption') || 'Default';
+    this.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
+    return {
+      mitemname: mitemname,
+      screendesc: screendesc
+    };
+  };
+  ScreensBaseElement.prototype.elementDescriptorFromScreenDescriptor = function (myname, menuitemname, screendesc) {
+    var mitemname = menuitemname;
+    var miname;
+    var screen;
+    var elementname;
+    miname = (screendesc.menuitem || mitemname || 'Default');
+    screen = screendesc.screen;
+    screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
+    screen.options = screen.options || {};
+    applib.descriptorApi.pushToArraySafe('onInitiallyLoaded', screen.options, screenReadyToShowHandler.bind(this));
+    screen.options.actual = true;
+    screen.options.self_selector = 'attrib:activescreen';
+    screen.options.miname = miname;
+    elementname = myname+'.'+screen.name;
+
+    return {
+      name: elementname,
+      type: screen.type,
+      options: screen.options
+    };
+  };
+
+    //static, this is ScreensBaseElement
+    function screenReadyToShowHandler (el) {
+      browserlib.viewTransition.end();
+      this.set('screenLoading', null);
+      purgeNeedMenuItemListener.call(this);
+      if (el && el.needMenuItem && lib.isFunction(el.needMenuItem.fire)) {
+        this.needMenuItemListener = el.needMenuItem.attach(this.onMenuItemNeeded.bind(this));
+      }
+      this.screenReadyToShow.fire(el);
+    }
+    function purgeNeedMenuItemListener () {
+      if (this.needMenuItemListener) {
+        this.needMenuItemListener.destroy();
+      }
+      this.needMenuItemListener = null;
+    }
+    //endof static
+
+  applib.registerElementType('ScreensBase', ScreensBaseElement);  
+}
+module.exports = createScreensBase;
+},{}],2:[function(require,module,exports){
 function createScreenFunctionality (execlib) {
   'use strict';
 
-  require('./screenscreator')(execlib);
+  require('./basecreator')(execlib);
+  require('./screens')(execlib);
+  require('./preloadedscreens')(execlib);
 }
 module.exports = createScreenFunctionality;
 
-},{"./screenscreator":5}],2:[function(require,module,exports){
+},{"./basecreator":1,"./preloadedscreens":3,"./screens":4}],3:[function(require,module,exports){
+function createPreloadedScreens (execlib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    lR = execlib.execSuite.libRegistry,
+    browserlib = lR.get('allex_browserwebcomponent'),
+    applib = lR.get('allex_applib'),
+    ScreensBaseElement = applib.getElementType('ScreensBase'),
+    arryops = lR.get('allex_arrayoperationslib');/*,
+    jobcores = require('./jobcores')(execlib, applib, arryops);*/
+
+  function PreloadedScreensElement (id, options) {
+    ScreensBaseElement.call(this, id, options);
+    this.currentlyActual = null;
+  }
+  lib.inherit(PreloadedScreensElement, ScreensBaseElement);
+  PreloadedScreensElement.prototype.__cleanUp = function () {    
+    this.currentlyActual = null;
+    ScreensBaseElement.prototype.__cleanUp.call(this);
+  };
+
+  PreloadedScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
+    var screens = this.getConfigVal('screens'), ret;
+    ret = ScreensBaseElement.prototype.staticEnvironmentDescriptor.call(this, myname);
+    if (!lib.isArray(screens)) {
+      screens = [];
+    }
+    ret.elements = ret.elements || [];
+    Array.prototype.push.apply(ret.elements, screens.map(elementer.bind(this, myname)));
+    myname = null;
+    return ret;
+  };
+
+  PreloadedScreensElement.prototype.handleActiveMenuItem = function (mitem) {
+    var config = this.configForMenuItem(mitem), target;
+    var screens = this.getConfigVal('screens');
+    if (!config) { //onMenuItemNeeded already done
+      return;
+    }
+    try {
+      target = this.getElement(config.mitemname+'_Screen');
+      if (!target) {
+        return;
+      }
+      if (this.currentlyActual) {
+        this.currentlyActual.set('actual', false);
+      }
+      this.currentlyActual = target;
+      this.currentlyActual.set('actual', true);
+    } catch (e) {
+      console.warn(this.constructor.name, 'could not find', config.mitemname);
+    }
+  };
+
+  //statics
+  function elementer (myname, screendesc) {
+    var ret = this.elementDescriptorFromScreenDescriptor(myname, '', screendesc);
+    ret.options.actual = false;
+    return ret;
+  }
+  //endof statics
+
+
+  applib.registerElementType('PreloadedScreens', PreloadedScreensElement);
+}
+module.exports = createPreloadedScreens;
+},{}],4:[function(require,module,exports){
+function createScreens (execlib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    lR = execlib.execSuite.libRegistry,
+    browserlib = lR.get('allex_browserwebcomponent'),
+    applib = lR.get('allex_applib'),
+    ScreensBaseElement = applib.getElementType('ScreensBase'),
+    arryops = lR.get('allex_arrayoperationslib'),
+    jobcores = require('./jobcores')(execlib, applib, arryops);
+
+  function ScreensElement (id, options) {
+    ScreensBaseElement.call(this, id, options);
+  }
+  lib.inherit(ScreensElement, ScreensBaseElement);
+  ScreensElement.prototype.__cleanUp = function () {    
+    ScreensBaseElement.prototype.__cleanUp.call(this);
+  };
+
+  ScreensElement.prototype.environmentDescriptor_for_CentralScreen = function (myname, config) {
+    var mitemname = config.mitemname;
+    var screendesc = config.screendesc;
+    if (!screendesc) {
+      return;
+    }
+    return {
+      elements: [this.elementDescriptorFromScreenDescriptor(myname, mitemname, screendesc)]
+    };
+  };
+
+  ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
+    this.jobs.run('.', lib.qlib.newSteppedJobOnSteppedInstance(
+      new jobcores.ActiveMenuItemHandler(this, mitem)
+    ));
+  };
+
+  applib.registerElementType('Screens', ScreensElement);
+}
+module.exports = createScreens;
+
+},{"./jobcores":7}],5:[function(require,module,exports){
 function createActiveMenuItemHandlerJobCore (lib, browserlib, applib, arryops, mylib) {
   'use strict';
 
@@ -33,31 +293,12 @@ function createActiveMenuItemHandlerJobCore (lib, browserlib, applib, arryops, m
       return;
     }
     mitem = this.item;
-    mitemname = mitem ? mitem.id : null;
-    screendesc = arryops.findElementWithProperty(this.screens.getConfigVal('screens'), 'menuitem', mitemname);
-    if (!screendesc) {
-      if (!mitemname) {
-        screendesc = arryops.findElementWithProperty(this.screens.getConfigVal('screens'), 'default', true);
-      }
-      if (!screendesc) {
-        //console.error('No screendesc for activemenuitem', mitemname, mitem);
-        return;
-      }
-      this.screens.onMenuItemNeeded(screendesc.menuitem);
+    config = this.screens.configForMenuItem(mitem);
+    if (!config) {
       return;
     }
-    screendescovl = mitem ? mitem.getConfigVal('screenoverlay') : null;
-    if (screendescovl) {
-      screendesc = lib.extend({}, screendesc, {screen: screendescovl});
-    }
-    dfltcaption = this.screens.getConfigVal('defaultCaption') || 'Default';
-    this.screens.set('screenLoading', mitem ? mitem.getConfigVal('title') : dfltcaption);
     d = lib.q.defer();
     ret = d.promise;
-    config = {
-      mitemname: mitemname,
-      screendesc: screendesc
-    };
     browserlib.viewTransition.start(screensDestroyer.bind(this, d, config));
     config = null;
     d = null;
@@ -90,7 +331,7 @@ function createActiveMenuItemHandlerJobCore (lib, browserlib, applib, arryops, m
   mylib.ActiveMenuItemHandler = ActiveMenuItemHandlerJobCore;
 }
 module.exports = createActiveMenuItemHandlerJobCore;
-},{}],3:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 function createBaseJobCore (lib, mylib) {
   'use strict';
 
@@ -117,7 +358,7 @@ function createBaseJobCore (lib, mylib) {
   mylib.Base = BaseJobCore;
 }
 module.exports = createBaseJobCore;
-},{}],4:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 function createJobCores (execlib, applib, arryops) {
   'use strict';
 
@@ -132,140 +373,7 @@ function createJobCores (execlib, applib, arryops) {
   return mylib;
 }
 module.exports = createJobCores;
-},{"./activemenuitemhandlercreator":2,"./basecreator":3}],5:[function(require,module,exports){
-function createScreens (execlib) {
-  'use strict';
-
-  var lib = execlib.lib,
-    lR = execlib.execSuite.libRegistry,
-    browserlib = lR.get('allex_browserwebcomponent'),
-    applib = lR.get('allex_applib'),
-    WebElement = applib.getElementType('WebElement'),
-    arryops = lR.get('allex_arrayoperationslib'),
-    jobcores = require('./jobcores')(execlib, applib, arryops);
-
-  function ScreensElement (id, options) {
-    WebElement.call(this, id, options);
-    this.screenLoading = false;
-    this.screenReadyToShow = this.createBufferableHookCollection();
-    this.elementToActivate = null;
-    this.needMenuItemListener = null;
-  }
-  lib.inherit(ScreensElement, WebElement);
-  ScreensElement.prototype.__cleanUp = function () {    
-    purgeNeedMenuItemListener.call(this);
-    this.elementToActivate = null;
-    if (this.screenReadyToShow) {
-      this.screenReadyToShow.destroy();
-    }
-    this.screenReadyToShow = null;
-    this.screenLoading = null;
-    WebElement.prototype.__cleanUp.call(this);
-  };
-
-  ScreensElement.prototype.staticEnvironmentDescriptor = function (myname) {
-    var ret = {
-      logic: []
-    };
-    var environmentname = this.getConfigVal('environmentname');
-    if (environmentname) {
-      ret.logic.push({
-        triggers: 'environment.'+environmentname+':state',
-        handler: this.onEnvironmentState.bind(this)
-      });
-    }
-    return ret;
-  };
-  ScreensElement.prototype.actualEnvironmentDescriptor = function (myname) {
-    return {
-      logic: [{
-        triggers: 'element.'+myname+':elementToActivate',
-        handler: this.handleActiveMenuItem.bind(this)
-      }]
-    }
-  };
-
-  ScreensElement.prototype.environmentDescriptor_for_CentralScreen = function (myname, config) {
-    var mitemname = config.mitemname;
-    var screendesc = config.screendesc;
-    var miname;
-    var screen;
-    var elementname;
-    if (!screendesc) {
-      return;
-    }
-    miname = (screendesc.menuitem || mitemname || 'Default');
-    screen = screendesc.screen;
-    screen.name = (screendesc.menuitem || mitemname || 'Default')+'_Screen';
-    screen.options = screen.options || {};
-    applib.descriptorApi.pushToArraySafe('onInitiallyLoaded', screen.options, screenReadyToShowHandler.bind(this));
-    screen.options.actual = true;
-    screen.options.self_selector = 'attrib:activescreen';
-    screen.options.miname = miname;
-    elementname = myname+'.'+screen.name;
-    return {
-      elements: [{
-        name: elementname,
-        type: screen.type,
-        options: screen.options
-      }]
-    };
-  };
-
-  ScreensElement.prototype.set_elementToActivate = function (el) {
-    this.elementToActivate = el;
-    return true;
-  };
-  ScreensElement.prototype.handleActiveMenuItem = function (mitem) {
-    this.jobs.run('.', lib.qlib.newSteppedJobOnSteppedInstance(
-      new jobcores.ActiveMenuItemHandler(this, mitem)
-    ));
-  };
-
-  ScreensElement.prototype.onMenuItemNeeded = function (menuitemneeded, screenoverlay) {
-    if (!lib.isString(menuitemneeded)) {
-      return;
-    }
-    applib.safeRunMethodOnAppElement(this.getConfigVal('appmenuname'), 'setActiveElementNameWithExtras', menuitemneeded, screenoverlay);
-  };
-
-  ScreensElement.prototype.onEnvironmentState = function (state) {
-    var actual = this.get('actual');
-    if (!lib.isVal(state)) {
-      this.set('actual', false);
-      return;
-    }
-    if (actual) {
-      return;
-    }
-    if (state=='established') {
-      this.set('actual', true);
-    }
-  };
-
-  //static, this is ScreensElement
-  function screenReadyToShowHandler (el) {
-    browserlib.viewTransition.end();
-    this.set('screenLoading', null);
-    purgeNeedMenuItemListener.call(this);
-    if (el && el.needMenuItem && lib.isFunction(el.needMenuItem.fire)) {
-      this.needMenuItemListener = el.needMenuItem.attach(this.onMenuItemNeeded.bind(this));
-    }
-    this.screenReadyToShow.fire(el);
-  }
-  function purgeNeedMenuItemListener () {
-    if (this.needMenuItemListener) {
-      this.needMenuItemListener.destroy();
-    }
-    this.needMenuItemListener = null;
-  }
-  //endof static
-
-  applib.registerElementType('Screens', ScreensElement);
-}
-module.exports = createScreens;
-
-},{"./jobcores":4}],6:[function(require,module,exports){
+},{"./activemenuitemhandlercreator":5,"./basecreator":6}],8:[function(require,module,exports){
 (function (execlib) {
   'use strict';
 
@@ -280,14 +388,14 @@ module.exports = createScreens;
   lR.register('allex_menuconsumerwebcomponent', mylib);
 })(ALLEX);
 
-},{"./elements":1,"./mixins":7,"./prepreprocessors":9}],7:[function(require,module,exports){
+},{"./elements":2,"./mixins":9,"./prepreprocessors":11}],9:[function(require,module,exports){
 function createMixins (lib, mylib) {
   var mixins = {};
   require('./needmenuitemcreator')(lib, mixins);
   mylib.mixins = mixins;
 }
 module.exports = createMixins;
-},{"./needmenuitemcreator":8}],8:[function(require,module,exports){
+},{"./needmenuitemcreator":10}],10:[function(require,module,exports){
 function createNeedMenuItemMixin (lib, mylib) {
   'use strict';
 
@@ -307,7 +415,7 @@ function createNeedMenuItemMixin (lib, mylib) {
   mylib.NeedMenuItem = NeedMenuItemMixin;
 }
 module.exports = createNeedMenuItemMixin;
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 function createPrePreprocessors (execlib) {
   'use strict';
 
@@ -363,7 +471,7 @@ function createPrePreprocessors (execlib) {
 }
 module.exports = createPrePreprocessors;
 
-},{"./screenfunctionalitycreator":10}],10:[function(require,module,exports){
+},{"./screenfunctionalitycreator":12}],12:[function(require,module,exports){
 function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuConsumerPrePreprocessor) {
   'use strict';
 
@@ -373,7 +481,7 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
   MenuConsumerPrePreprocessor.prototype.processScreens = function (desc) {
     desc.elements = desc.elements||[];
     desc.elements.push({
-      type: 'Screens',
+      type: this.config.preload ? 'PreloadedScreens' : 'Screens',
       name: this.config.screenselement.name,
       options: {
         actual: this.config.actual,
@@ -415,4 +523,4 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
 }
 module.exports = createScreenFunctionalityOnMenuConsumerPrePreprocessor;
 
-},{}]},{},[6]);
+},{}]},{},[8]);

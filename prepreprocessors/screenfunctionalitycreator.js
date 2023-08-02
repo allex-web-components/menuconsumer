@@ -7,7 +7,7 @@ function createScreenFunctionalityOnMenuConsumerPrePreprocessor (execlib, MenuCo
   MenuConsumerPrePreprocessor.prototype.processScreens = function (desc) {
     desc.elements = desc.elements||[];
     desc.elements.push({
-      type: 'Screens',
+      type: this.config.preload ? 'PreloadedScreens' : 'Screens',
       name: this.config.screenselement.name,
       options: {
         actual: this.config.actual,
