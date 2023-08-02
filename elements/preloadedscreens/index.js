@@ -47,6 +47,7 @@ function createPreloadedScreens (execlib) {
       }
       this.currentlyActual = target;
       this.currentlyActual.set('actual', true);
+      this.screenReadyToShow.fire(this.currentlyActual);
     } catch (e) {
       console.warn(this.constructor.name, 'could not find', config.mitemname);
     }
